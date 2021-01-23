@@ -2,12 +2,12 @@ package cqrs
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"reflect"
 )
 
 type App interface {
-	Command(aggregateID string, command Command) error
+	Command(aggregateID string, command Command) ([]Event, error)
 	Query(query Query, result QueryResult) error
 }
 
@@ -57,27 +57,46 @@ func (a *aggregateActions) Emit(events ...Event) {
 	a.pendingEvents = append(a.pendingEvents, events...)
 }
 
-func (s SimpleApp) Command(aggregateID string, command Command) error {
+func (s SimpleApp) Command(aggregateID string, command Command) ([]Event, error) { // TODO maybe return full event with aggregate id
 	commandType := reflect.TypeOf(command)
 	factory, found := s.aggregateFactories[commandType]
 	if !found {
-		return errors.New("No Aggregate found for command type")
+		return nil, fmt.Errorf("no aggregate found for command %T", command)
 	}
 	aggregate := factory(aggregateID)
 	aggregateType := reflect.TypeOf(aggregate)
-	aggregateEvents, err := s.eventStore.GetEventsForAggregate(aggregateType, aggregateID)
-	if err != nil {
-		return err
-	}
-	for _, event := range aggregateEvents {
-		aggregate.Apply(event)
+
+	if aggregateID != "" { // special case if aggregate not exists before command
+		aggregateEvents, err := s.eventStore.GetEventsForAggregate(aggregateType, aggregateID)
+		if err != nil {
+			return nil, err
+		}
+		for _, event := range aggregateEvents {
+			aggregate.Apply(event)
+		}
 	}
 
 	actions := &aggregateActions{
 		aggregate: aggregate,
 	}
 	aggregate.Handle(command, actions)
-	return s.eventStore.PublishEventsForAggregate(aggregateType, aggregateID, actions.pendingEvents)
+
+	if aggregateID != "" {
+		if aggregateID != aggregate.AggregateID() { // additional check that aggregate id not changed
+			return nil, fmt.Errorf("aggregate %T id was changed from %s to %s during command %T",
+				aggregate, aggregateID, aggregate.AggregateID(), command)
+		}
+	}
+
+	if aggregate.AggregateID() == "" {
+		return nil, fmt.Errorf("aggregate %T has no ID after command %T handling", aggregate, command)
+	}
+
+	err := s.eventStore.PublishEventsForAggregate(aggregateType, aggregate.AggregateID(), actions.pendingEvents)
+	if err != nil {
+		return nil, err
+	}
+	return actions.pendingEvents, nil
 }
 
 func (s SimpleApp) Query(query Query, result QueryResult) error {
