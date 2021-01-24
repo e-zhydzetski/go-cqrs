@@ -1,17 +1,20 @@
 package cqrs
 
-type Event interface{}
-
 type Command interface{}
 
 type Query interface{}
 type QueryResult interface{}
 
+type Handler interface {
+	CommandTypes() []Command
+	// if command is invalid -> no state change -> no events emitted, simple return error
+	Handle(command Command, actions AggregateActions) error
+}
+
 type Aggregate interface {
+	Handler
 	AggregateID() string
 	Apply(event Event)
-	CommandTypes() []Command
-	Handle(command Command, actions AggregateActions)
 }
 
 type AggregateActions interface {

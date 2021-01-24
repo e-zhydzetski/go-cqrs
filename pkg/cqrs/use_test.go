@@ -44,7 +44,7 @@ func (t *TestAggregate) CommandTypes() []Command {
 	return []Command{&TestCommand{}}
 }
 
-func (t *TestAggregate) Handle(command Command, actions AggregateActions) {
+func (t *TestAggregate) Handle(command Command, actions AggregateActions) error {
 	switch c := command.(type) {
 	case *TestCommand:
 		if t.ID == "" {
@@ -52,6 +52,7 @@ func (t *TestAggregate) Handle(command Command, actions AggregateActions) {
 		}
 		actions.Emit(&TestEvent{NewX: c.TargetX})
 	}
+	return nil
 }
 
 func NewTestAggregate(id string) Aggregate {
@@ -69,6 +70,10 @@ func TestUsage(t *testing.T) {
 	}
 	app.RegisterAggregate(NewTestAggregate)
 	events, err := app.Command("", &TestCommand{TargetX: 1})
+	assert.NilError(t, err)
+	var createdEvent TestCreatedEvent
+	assert.Assert(t, events.Get(&createdEvent))
+	assert.Assert(t, createdEvent.ID == "xyz")
 	fmt.Println(events)
 	events, err = app.Command("xyz", &TestCommand{TargetX: 2})
 	fmt.Println(events)

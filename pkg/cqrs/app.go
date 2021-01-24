@@ -7,7 +7,7 @@ import (
 )
 
 type App interface {
-	Command(aggregateID string, command Command) ([]Event, error)
+	Command(aggregateID string, command Command) (SavedEvents, error)
 	Query(query Query, result QueryResult) error
 }
 
@@ -57,7 +57,7 @@ func (a *aggregateActions) Emit(events ...Event) {
 	a.pendingEvents = append(a.pendingEvents, events...)
 }
 
-func (s SimpleApp) Command(aggregateID string, command Command) ([]Event, error) { // TODO maybe return full event with aggregate id
+func (s SimpleApp) Command(aggregateID string, command Command) (SavedEvents, error) { // TODO maybe return full event with aggregate id
 	commandType := reflect.TypeOf(command)
 	factory, found := s.aggregateFactories[commandType]
 	if !found {
@@ -79,7 +79,10 @@ func (s SimpleApp) Command(aggregateID string, command Command) ([]Event, error)
 	actions := &aggregateActions{
 		aggregate: aggregate,
 	}
-	aggregate.Handle(command, actions)
+	err := aggregate.Handle(command, actions)
+	if err != nil {
+		return nil, err
+	}
 
 	if aggregateID != "" {
 		if aggregateID != aggregate.AggregateID() { // additional check that aggregate id not changed
@@ -92,7 +95,7 @@ func (s SimpleApp) Command(aggregateID string, command Command) ([]Event, error)
 		return nil, fmt.Errorf("aggregate %T has no ID after command %T handling", aggregate, command)
 	}
 
-	err := s.eventStore.PublishEventsForAggregate(aggregateType, aggregate.AggregateID(), actions.pendingEvents)
+	err = s.eventStore.PublishEventsForAggregate(aggregateType, aggregate.AggregateID(), actions.pendingEvents)
 	if err != nil {
 		return nil, err
 	}
