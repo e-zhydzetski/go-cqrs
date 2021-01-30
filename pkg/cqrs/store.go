@@ -1,20 +1,16 @@
 package cqrs
 
-import (
-	"reflect"
-)
-
 func NewInMemoryEventStore() EventStore {
-	return inMemoryEventStore{
-		allEvents: map[reflect.Type]map[string][]Event{},
+	return &inMemoryEventStore{
+		allEvents: map[AggregateType]map[string][]Event{},
 	}
 }
 
 type inMemoryEventStore struct {
-	allEvents map[reflect.Type]map[string][]Event
+	allEvents map[AggregateType]map[string][]Event
 }
 
-func (i inMemoryEventStore) GetEventsForAggregate(aggregateType reflect.Type, aggregateID string) ([]Event, error) {
+func (i *inMemoryEventStore) GetEventsForAggregate(aggregateType AggregateType, aggregateID string) ([]Event, error) {
 	aggregatesEvents, found := i.allEvents[aggregateType]
 	if !found {
 		return nil, nil
@@ -22,7 +18,7 @@ func (i inMemoryEventStore) GetEventsForAggregate(aggregateType reflect.Type, ag
 	return aggregatesEvents[aggregateID], nil
 }
 
-func (i inMemoryEventStore) PublishEventsForAggregate(aggregateType reflect.Type, aggregateID string, events []Event) error {
+func (i *inMemoryEventStore) PublishEventsForAggregate(aggregateType AggregateType, aggregateID string, events ...Event) error {
 	aggregatesEvents, found := i.allEvents[aggregateType]
 	if !found {
 		aggregatesEvents = map[string][]Event{}

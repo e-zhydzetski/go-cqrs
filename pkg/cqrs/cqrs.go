@@ -1,9 +1,13 @@
 package cqrs
 
+import "reflect"
+
 type Command interface{}
 
 type Query interface{}
 type QueryResult interface{}
+
+type AggregateType reflect.Type
 
 type Handler interface {
 	CommandTypes() []Command

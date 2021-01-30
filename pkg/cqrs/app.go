@@ -19,8 +19,15 @@ type MainApp interface {
 }
 
 type EventStore interface {
-	GetEventsForAggregate(aggregateType reflect.Type, aggregateID string) ([]Event, error)
-	PublishEventsForAggregate(aggregateType reflect.Type, aggregateID string, events []Event) error
+	GetEventsForAggregate(aggregateType AggregateType, aggregateID string) ([]Event, error)
+	PublishEventsForAggregate(aggregateType AggregateType, aggregateID string, events ...Event) error
+}
+
+// Event wrapper with metadata
+type EventRecord struct {
+	AggregateType AggregateType
+	AggregateID   string
+	Data          Event
 }
 
 type SimpleApp struct {
@@ -29,11 +36,23 @@ type SimpleApp struct {
 	aggregateFactories map[reflect.Type]AggregateFactory
 }
 
-func (s SimpleApp) BaseContext(ctx context.Context) {
+func NewSimpleApp(ctx context.Context, eventStore EventStore) *SimpleApp {
+	return &SimpleApp{
+		ctx:                ctx,
+		eventStore:         eventStore,
+		aggregateFactories: map[reflect.Type]AggregateFactory{},
+	}
+}
+
+func (s *SimpleApp) EventStore() EventStore {
+	return s.eventStore
+}
+
+func (s *SimpleApp) BaseContext(ctx context.Context) {
 	s.ctx = ctx
 }
 
-func (s SimpleApp) RegisterAggregate(aggregateFactory AggregateFactory) {
+func (s *SimpleApp) RegisterAggregate(aggregateFactory AggregateFactory) {
 	aggregate := aggregateFactory("")
 
 	for _, commandType := range aggregate.CommandTypes() {
@@ -41,7 +60,7 @@ func (s SimpleApp) RegisterAggregate(aggregateFactory AggregateFactory) {
 	}
 }
 
-func (s SimpleApp) RegisterView(view View) {
+func (s *SimpleApp) RegisterView(view View) {
 	panic("implement me")
 }
 
@@ -57,7 +76,7 @@ func (a *aggregateActions) Emit(events ...Event) {
 	a.pendingEvents = append(a.pendingEvents, events...)
 }
 
-func (s SimpleApp) Command(aggregateID string, command Command) (SavedEvents, error) { // TODO maybe return full event with aggregate id
+func (s *SimpleApp) Command(aggregateID string, command Command) (SavedEvents, error) { // TODO maybe return full event with aggregate id
 	commandType := reflect.TypeOf(command)
 	factory, found := s.aggregateFactories[commandType]
 	if !found {
@@ -102,6 +121,6 @@ func (s SimpleApp) Command(aggregateID string, command Command) (SavedEvents, er
 	return actions.pendingEvents, nil
 }
 
-func (s SimpleApp) Query(query Query, result QueryResult) error {
+func (s *SimpleApp) Query(query Query, result QueryResult) error {
 	panic("implement me")
 }
