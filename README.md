@@ -23,9 +23,16 @@ CQRS library for golang
   Return synchronous error from App.Command method and no events should be published. Maybe it is possible both error and events?
 * Should event/command struct contains source/target aggregate id inside, or only payload wrapped with struct contains id?
 * ~~How to create aggregates?~~ Allow to sent command to aggregate without ID, in this case id may be calculated during handling and will be in result events.
-* How to implements cross aggregate cases? Saga?
+* How to implements cross aggregate cases? Saga? Process manager? DSL?
 * Implement ES/DB dispatcher backends.  
   In case of DB, save new state of aggregate after command and notify all subscribers about events without persisting (sync/async?).
 * What to do with events, needed in small scope without business value? Separate store with GC? Separate App instance?
 * It is not recommended to call queries from aggregate handler, why?  
   Maybe it is OK if aggregate know about eventual consistency of view?
+* Add aggregate version = count of applied events, for optimistic locking.  
+  When publishing events after a handler executed, atomically check and update version (offset) of stream and retry command handler on error.  
+  Version 0 = aggregate creation, no events applied in the past.  
+  So commands should be free from side effects for safe retries.
+* Define minimal API to event store interface.  
+  Implement in-memory event store with concurrency support.
+* Add BDD testing helper. Given/When/Then tests for the App. 
