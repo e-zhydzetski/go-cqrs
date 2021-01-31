@@ -36,3 +36,19 @@ CQRS library for golang
 * Define minimal API to event store interface.  
   Implement in-memory event store with concurrency support.
 * Add BDD testing helper. Given/When/Then tests for the App. 
+* MongoDB event store:
+  * document = event: id, timestamp, event_type, event_data, event_meta
+  * id = stream_name("aggregate_type + aggregate_id") + stream_sequence
+  * timestamp = global sequence, internal mongo [timestamp](https://docs.mongodb.com/manual/reference/bson-types/#timestamps)
+  * event_data = JSON/Protobuf?
+  * event_meta = JSON
+  * WRITE_MAJORITY, READ_COMMITTED
+  * oplog tailing
+  * indexes:
+    * _id - to get the aggregate events
+    * timestamp - to get all events ordered
+    * event_type, timestamp - to get special event types ordered
+  * how to atomically insert multiple events into the stream?
+    * try to insert the first event, if stream_sequence is free - ok, no concurrent writes has been occurred, insert others
+    * what if the second event insert failed?
+    * is it possible to read stream + restore aggregate + handle command + emit an event between 2 inserts in ordered bulk? Load test needed.
