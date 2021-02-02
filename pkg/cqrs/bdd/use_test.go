@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/e-zhydzetski/go-cqrs/pkg/cqrs"
+	"github.com/e-zhydzetski/go-cqrs/pkg/es"
 	"reflect"
 	"testing"
 )
@@ -63,7 +64,7 @@ func NewTestAggregate(id string) cqrs.Aggregate {
 }
 
 func TestUsage(t *testing.T) {
-	app := cqrs.NewSimpleApp(context.Background(), cqrs.NewInMemoryEventStore())
+	app := cqrs.NewSimpleApp(context.Background(), es.NewInMemoryEventStore())
 	app.RegisterAggregate(NewTestAggregate)
 
 	testCase := New(app)
