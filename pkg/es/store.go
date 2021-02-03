@@ -13,7 +13,7 @@ type EventStore interface {
 	// First event version should be the latest already published inside the stream event version+1
 	PublishEvents(ctx context.Context, events ...*EventRecord) error
 	GetStreamEvents(ctx context.Context, stream string) ([]*EventRecord, error)
-	SubscribeOnEvents(ctx context.Context, filter EventFilter, callbackFunc func(event *EventRecord)) error
+	SubscribeOnEvents(ctx context.Context, filter *EventFilter, callbackFunc func(event *EventRecord) bool) error
 }
 
 // Full event info
@@ -39,7 +39,7 @@ type EventFilter struct {
 	Stream string
 	Types  []string
 	Pos    StorePosition
-	Back   bool
+	//Back   bool
 }
 
 func FilterDefault() *EventFilter {
@@ -47,7 +47,7 @@ func FilterDefault() *EventFilter {
 		Stream: "",            // default all streams
 		Types:  nil,           // default all types
 		Pos:    StorePosBegin, // default from the beginning
-		Back:   false,         // default forward
+		//Back:   false,         // default forward
 	}
 }
 
@@ -66,7 +66,7 @@ func (ef *EventFilter) FromThePosition(pos StorePosition) *EventFilter {
 	return ef
 }
 
-func (ef *EventFilter) Backward() *EventFilter {
-	ef.Back = true
-	return ef
-}
+//func (ef *EventFilter) Backward() *EventFilter {
+//	ef.Back = true
+//	return ef
+//}
