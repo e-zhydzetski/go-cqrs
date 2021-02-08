@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/e-zhydzetski/go-cqrs/pkg/cqrs"
-	"github.com/e-zhydzetski/go-cqrs/pkg/es"
 	"github.com/e-zhydzetski/go-cqrs/pkg/es/inmemes"
 	"reflect"
 	"testing"
@@ -77,10 +76,9 @@ func TestUsage(t *testing.T) {
 	)
 
 	t.Run("simple test2", testCase.
-		Given(&es.EventRecord{
-			Stream:   reflect.TypeOf(&TestAggregate{}).String() + "!" + "xyz", // TODO use app converter
-			Sequence: 3,                                                       // TODO auto
-			Type:     reflect.TypeOf(&TestCreatedEvent{}).String(),            // TODO use app converter
+		Given(AggregateEvent{
+			AggregateType: reflect.TypeOf(&TestAggregate{}),
+			AggregateID:   "xyz",
 			Data: &TestCreatedEvent{
 				ID: "xyz",
 			},

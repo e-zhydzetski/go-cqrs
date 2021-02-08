@@ -65,11 +65,11 @@ func (a *aggregateActions) Emit(events ...Event) {
 	a.pendingEvents = append(a.pendingEvents, events...)
 }
 
-func (s *SimpleApp) aggregateToESStreamName(aggregate Aggregate) string {
-	return reflect.TypeOf(aggregate).String() + "!" + aggregate.AggregateID() // TODO make stable aggregate type name
+func (s *SimpleApp) AggregateToESStreamName(aggregateType AggregateType, aggregateID string) string {
+	return aggregateType.String() + "!" + aggregateID // TODO make stable aggregate type name
 }
 
-func (s *SimpleApp) eventToESEventType(event Event) string {
+func (s *SimpleApp) EventToESEventType(event Event) string {
 	return reflect.TypeOf(event).String() // TODO make stable event type name
 }
 
@@ -85,7 +85,7 @@ RETRY:
 
 	var streamSeq uint32 = 0
 	if aggregateID != "" { // special case if aggregate not exists before command
-		aggregateEvents, err := s.eventStore.GetStreamEvents(s.ctx, s.aggregateToESStreamName(aggregate))
+		aggregateEvents, err := s.eventStore.GetStreamEvents(s.ctx, s.AggregateToESStreamName(reflect.TypeOf(aggregate), aggregateID))
 		if err != nil {
 			return nil, err
 		}
@@ -114,14 +114,14 @@ RETRY:
 		return nil, fmt.Errorf("aggregate %T has no ID after command %T handling", aggregate, command)
 	}
 
-	streamName := s.aggregateToESStreamName(aggregate)
+	streamName := s.AggregateToESStreamName(reflect.TypeOf(aggregate), aggregate.AggregateID())
 	eventRecords := make([]*es.EventRecord, len(actions.pendingEvents))
 	for i, event := range actions.pendingEvents {
 		streamSeq++
 		eventRecords[i] = &es.EventRecord{
 			Stream:   streamName,
 			Sequence: streamSeq,
-			Type:     s.eventToESEventType(event),
+			Type:     s.EventToESEventType(event),
 			Data:     event,
 		}
 	}
