@@ -1,7 +1,9 @@
 package bdd
 
 import (
+	"context"
 	"github.com/e-zhydzetski/go-cqrs/pkg/cqrs"
+	"github.com/e-zhydzetski/go-cqrs/pkg/es"
 	"gotest.tools/assert"
 	"reflect"
 	"testing"
@@ -9,13 +11,13 @@ import (
 
 type TestableApp interface {
 	cqrs.App
-	EventStore() cqrs.EventStore
+	EventStore() es.EventStore
 }
 
 type TestCase struct {
-	store             cqrs.EventStore
+	store             es.EventStore
 	app               cqrs.App
-	givenEvents       []cqrs.EventRecord
+	givenEvents       []*es.EventRecord
 	targetAggregateID string
 	whenCommand       cqrs.Command
 }
@@ -27,7 +29,7 @@ func New(app TestableApp) *TestCase {
 	}
 }
 
-func (c *TestCase) Given(events ...cqrs.EventRecord) *TestCase {
+func (c *TestCase) Given(events ...*es.EventRecord) *TestCase {
 	c.givenEvents = events
 	return c
 }
@@ -42,10 +44,8 @@ func (c *TestCase) Then(expectedEvents ...cqrs.Event) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Helper()
 
-		for _, er := range c.givenEvents {
-			if err := c.store.PublishEventsForAggregate(er.AggregateType, er.AggregateID, er.Data); err != nil {
-				t.Fatalf("unable to save given event: %v", err)
-			}
+		if err := c.store.PublishEvents(context.Background(), c.givenEvents...); err != nil {
+			t.Fatalf("unable to save given event: %v", err)
 		}
 
 		// TODO get events from store by filter/subscription to test not only single aggregate handler results !!!

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/e-zhydzetski/go-cqrs/pkg/cqrs"
 	"github.com/e-zhydzetski/go-cqrs/pkg/es"
+	"github.com/e-zhydzetski/go-cqrs/pkg/es/inmemes"
 	"reflect"
 	"testing"
 )
@@ -64,7 +65,7 @@ func NewTestAggregate(id string) cqrs.Aggregate {
 }
 
 func TestUsage(t *testing.T) {
-	app := cqrs.NewSimpleApp(context.Background(), es.NewInMemoryEventStore())
+	app := cqrs.NewSimpleApp(context.Background(), inmemes.New())
 	app.RegisterAggregate(NewTestAggregate)
 
 	testCase := New(app)
@@ -76,9 +77,10 @@ func TestUsage(t *testing.T) {
 	)
 
 	t.Run("simple test2", testCase.
-		Given(cqrs.EventRecord{
-			AggregateType: reflect.TypeOf(&TestAggregate{}),
-			AggregateID:   "xyz",
+		Given(&es.EventRecord{
+			Stream:   reflect.TypeOf(&TestAggregate{}).String() + "!" + "xyz", // TODO use app converter
+			Sequence: 3,                                                       // TODO auto
+			Type:     reflect.TypeOf(&TestCreatedEvent{}).String(),            // TODO use app converter
 			Data: &TestCreatedEvent{
 				ID: "xyz",
 			},

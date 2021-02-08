@@ -3,6 +3,7 @@ package cqrs
 import (
 	"context"
 	"fmt"
+	"github.com/e-zhydzetski/go-cqrs/pkg/es"
 	"reflect"
 )
 
@@ -18,25 +19,13 @@ type MainApp interface {
 	RegisterView(view View)
 }
 
-type EventStore interface {
-	GetEventsForAggregate(aggregateType AggregateType, aggregateID string) ([]Event, error)
-	PublishEventsForAggregate(aggregateType AggregateType, aggregateID string, events ...Event) error
-}
-
-// Event wrapper with metadata
-type EventRecord struct {
-	AggregateType AggregateType
-	AggregateID   string
-	Data          Event
-}
-
 type SimpleApp struct {
 	ctx                context.Context
-	eventStore         EventStore
+	eventStore         es.EventStore
 	aggregateFactories map[reflect.Type]AggregateFactory
 }
 
-func NewSimpleApp(ctx context.Context, eventStore EventStore) *SimpleApp {
+func NewSimpleApp(ctx context.Context, eventStore es.EventStore) *SimpleApp {
 	return &SimpleApp{
 		ctx:                ctx,
 		eventStore:         eventStore,
@@ -44,7 +33,7 @@ func NewSimpleApp(ctx context.Context, eventStore EventStore) *SimpleApp {
 	}
 }
 
-func (s *SimpleApp) EventStore() EventStore {
+func (s *SimpleApp) EventStore() es.EventStore {
 	return s.eventStore
 }
 
@@ -76,22 +65,33 @@ func (a *aggregateActions) Emit(events ...Event) {
 	a.pendingEvents = append(a.pendingEvents, events...)
 }
 
+func (s *SimpleApp) aggregateToESStreamName(aggregate Aggregate) string {
+	return reflect.TypeOf(aggregate).String() + "!" + aggregate.AggregateID() // TODO make stable aggregate type name
+}
+
+func (s *SimpleApp) eventToESEventType(event Event) string {
+	return reflect.TypeOf(event).String() // TODO make stable event type name
+}
+
 func (s *SimpleApp) Command(aggregateID string, command Command) (SavedEvents, error) { // TODO maybe return full event with aggregate id
 	commandType := reflect.TypeOf(command)
 	factory, found := s.aggregateFactories[commandType]
 	if !found {
 		return nil, fmt.Errorf("no aggregate found for command %T", command)
 	}
-	aggregate := factory(aggregateID)
-	aggregateType := reflect.TypeOf(aggregate)
 
+RETRY:
+	aggregate := factory(aggregateID)
+
+	var streamSeq uint32 = 0
 	if aggregateID != "" { // special case if aggregate not exists before command
-		aggregateEvents, err := s.eventStore.GetEventsForAggregate(aggregateType, aggregateID)
+		aggregateEvents, err := s.eventStore.GetStreamEvents(s.ctx, s.aggregateToESStreamName(aggregate))
 		if err != nil {
 			return nil, err
 		}
 		for _, event := range aggregateEvents {
-			aggregate.Apply(event)
+			aggregate.Apply(event.Data)
+			streamSeq = event.Sequence
 		}
 	}
 
@@ -114,8 +114,22 @@ func (s *SimpleApp) Command(aggregateID string, command Command) (SavedEvents, e
 		return nil, fmt.Errorf("aggregate %T has no ID after command %T handling", aggregate, command)
 	}
 
-	err = s.eventStore.PublishEventsForAggregate(aggregateType, aggregate.AggregateID(), actions.pendingEvents)
+	streamName := s.aggregateToESStreamName(aggregate)
+	eventRecords := make([]*es.EventRecord, len(actions.pendingEvents))
+	for i, event := range actions.pendingEvents {
+		streamSeq++
+		eventRecords[i] = &es.EventRecord{
+			Stream:   streamName,
+			Sequence: streamSeq,
+			Type:     s.eventToESEventType(event),
+			Data:     event,
+		}
+	}
+	err = s.eventStore.PublishEvents(s.ctx, eventRecords...)
 	if err != nil {
+		if err == es.ErrStreamConcurrentModification {
+			goto RETRY
+		}
 		return nil, err
 	}
 	return actions.pendingEvents, nil
