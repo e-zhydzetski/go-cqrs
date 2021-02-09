@@ -12,8 +12,6 @@ import (
 type TestableApp interface {
 	cqrs.App
 	EventStore() es.EventStore
-	AggregateToESStreamName(aggregateType cqrs.AggregateType, aggregateID string) string
-	EventToESEventType(event cqrs.Event) string
 }
 
 type AggregateEvent struct {
@@ -53,7 +51,7 @@ func (c *TestCase) Then(expectedEvents ...cqrs.Event) func(*testing.T) {
 		ctx := context.Background()
 
 		for _, event := range c.givenEvents {
-			streamName := c.app.AggregateToESStreamName(event.AggregateType, event.AggregateID)
+			streamName := cqrs.AggregateToESStreamName(event.AggregateType, event.AggregateID)
 			historyEvents, err := c.store.GetStreamEvents(ctx, streamName)
 			if err != nil {
 				t.Fatalf("unable to load history events: %v", err)
@@ -66,7 +64,7 @@ func (c *TestCase) Then(expectedEvents ...cqrs.Event) func(*testing.T) {
 			eventRecord := &es.EventRecord{
 				Stream:   streamName,
 				Sequence: seq + 1,
-				Type:     c.app.EventToESEventType(event.Data),
+				Type:     cqrs.EventToESEventType(event.Data),
 				Data:     event.Data,
 			}
 			if err := c.store.PublishEvents(ctx, eventRecord); err != nil {

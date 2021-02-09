@@ -9,7 +9,7 @@ import (
 
 type App interface {
 	Command(command Command) (SavedEvents, error)
-	Query(query Query, result QueryResult) error
+	Query(query Query) (QueryResult, error)
 }
 
 type MainApp interface {
@@ -23,6 +23,7 @@ type SimpleApp struct {
 	ctx                context.Context
 	eventStore         es.EventStore
 	aggregateFactories map[reflect.Type]AggregateFactory
+	queryHandlers      map[reflect.Type]View
 }
 
 func NewSimpleApp(ctx context.Context, eventStore es.EventStore) *SimpleApp {
@@ -30,6 +31,7 @@ func NewSimpleApp(ctx context.Context, eventStore es.EventStore) *SimpleApp {
 		ctx:                ctx,
 		eventStore:         eventStore,
 		aggregateFactories: map[reflect.Type]AggregateFactory{},
+		queryHandlers:      map[reflect.Type]View{},
 	}
 }
 
@@ -50,7 +52,16 @@ func (s *SimpleApp) RegisterAggregate(aggregateFactory AggregateFactory) {
 }
 
 func (s *SimpleApp) RegisterView(view View) {
-	panic("implement me")
+	go func() {
+		_ = s.eventStore.SubscribeOnEvents(s.ctx, view.EventFilter(), func(event *es.EventRecord) bool {
+			view.Apply(event.Data, event.GlobalSequence)
+			return true
+		})
+	}()
+
+	for _, query := range view.QueryTypes() {
+		s.queryHandlers[reflect.TypeOf(query)] = view
+	}
 }
 
 type aggregateActions struct {
@@ -63,14 +74,6 @@ func (a *aggregateActions) Emit(events ...Event) {
 		a.aggregate.Apply(event)
 	}
 	a.pendingEvents = append(a.pendingEvents, events...)
-}
-
-func (s *SimpleApp) AggregateToESStreamName(aggregateType AggregateType, aggregateID string) string {
-	return aggregateType.String() + "!" + aggregateID // TODO make stable aggregate type name
-}
-
-func (s *SimpleApp) EventToESEventType(event Event) string {
-	return reflect.TypeOf(event).String() // TODO make stable event type name
 }
 
 func (s *SimpleApp) Command(command Command) (SavedEvents, error) { // TODO maybe return full event with aggregate id
@@ -86,7 +89,7 @@ RETRY:
 
 	var streamSeq uint32 = 0
 	if aggregateID != "" { // special case if aggregate not exists before command
-		aggregateEvents, err := s.eventStore.GetStreamEvents(s.ctx, s.AggregateToESStreamName(reflect.TypeOf(aggregate), aggregateID))
+		aggregateEvents, err := s.eventStore.GetStreamEvents(s.ctx, AggregateToESStreamName(reflect.TypeOf(aggregate), aggregateID))
 		if err != nil {
 			return nil, err
 		}
@@ -115,14 +118,14 @@ RETRY:
 		return nil, fmt.Errorf("aggregate %T has no ID after command %T handling", aggregate, command)
 	}
 
-	streamName := s.AggregateToESStreamName(reflect.TypeOf(aggregate), aggregate.AggregateID())
+	streamName := AggregateToESStreamName(reflect.TypeOf(aggregate), aggregate.AggregateID())
 	eventRecords := make([]*es.EventRecord, len(actions.pendingEvents))
 	for i, event := range actions.pendingEvents {
 		streamSeq++
 		eventRecords[i] = &es.EventRecord{
 			Stream:   streamName,
 			Sequence: streamSeq,
-			Type:     s.EventToESEventType(event),
+			Type:     EventToESEventType(event),
 			Data:     event,
 		}
 	}
@@ -136,6 +139,11 @@ RETRY:
 	return actions.pendingEvents, nil
 }
 
-func (s *SimpleApp) Query(query Query, result QueryResult) error {
-	panic("implement me")
+func (s *SimpleApp) Query(query Query) (QueryResult, error) {
+	qt := reflect.TypeOf(query)
+	view, found := s.queryHandlers[qt]
+	if !found {
+		return nil, fmt.Errorf("no view found for query %T", query)
+	}
+	return view.Query(query)
 }

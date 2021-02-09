@@ -1,14 +1,17 @@
 package cqrs
 
-import "reflect"
+import (
+	"github.com/e-zhydzetski/go-cqrs/pkg/es"
+	"reflect"
+)
 
 type Command interface {
 	AggregateID() string // target aggregate ID
 }
 
-type AggregateID string // helper struct for embedding into command structs
+type AggrID string // helper struct for embedding into command structs
 
-func (a AggregateID) AggregateID() string {
+func (a AggrID) AggregateID() string {
 	return string(a)
 }
 
@@ -36,8 +39,8 @@ type AggregateActions interface {
 type AggregateFactory func(id string) Aggregate
 
 type View interface {
-	EventTypes() []Event
-	Apply(event Event)
+	EventFilter() *es.EventFilter
+	Apply(event Event, globalSequence es.StorePosition)
 	QueryTypes() []Query
-	Query(query Query) QueryResult
+	Query(query Query) (QueryResult, error)
 }

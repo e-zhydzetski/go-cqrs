@@ -10,7 +10,7 @@ import (
 )
 
 type TestCommand struct {
-	cqrs.AggregateID
+	cqrs.AggrID
 	TargetX int
 }
 
@@ -85,8 +85,8 @@ func TestUsage(t *testing.T) {
 			},
 		}).
 		When(&TestCommand{
-			AggregateID: "xyz",
-			TargetX:     2,
+			AggrID:  "xyz",
+			TargetX: 2,
 		}).
 		Then(&TestEvent{
 			NewX: 2,
