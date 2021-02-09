@@ -8,7 +8,7 @@ import (
 )
 
 type App interface {
-	Command(aggregateID string, command Command) (SavedEvents, error)
+	Command(command Command) (SavedEvents, error)
 	Query(query Query, result QueryResult) error
 }
 
@@ -73,7 +73,8 @@ func (s *SimpleApp) EventToESEventType(event Event) string {
 	return reflect.TypeOf(event).String() // TODO make stable event type name
 }
 
-func (s *SimpleApp) Command(aggregateID string, command Command) (SavedEvents, error) { // TODO maybe return full event with aggregate id
+func (s *SimpleApp) Command(command Command) (SavedEvents, error) { // TODO maybe return full event with aggregate id
+	aggregateID := command.AggregateID()
 	commandType := reflect.TypeOf(command)
 	factory, found := s.aggregateFactories[commandType]
 	if !found {

@@ -2,7 +2,15 @@ package cqrs
 
 import "reflect"
 
-type Command interface{}
+type Command interface {
+	AggregateID() string // target aggregate ID
+}
+
+type AggregateID string // helper struct for embedding into command structs
+
+func (a AggregateID) AggregateID() string {
+	return string(a)
+}
 
 type Query interface{}
 type QueryResult interface{}

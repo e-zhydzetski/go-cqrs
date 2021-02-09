@@ -1,18 +1,24 @@
 package domain
 
+import "github.com/e-zhydzetski/go-cqrs/pkg/cqrs"
+
 type PreparePayment struct {
 	OrderID string
 	Amount  int
 }
 
+func (p PreparePayment) AggregateID() string {
+	return ""
+}
+
 type ConfirmPayment struct {
-	PaymentID string
+	cqrs.AggregateID
 }
 
 type CancelPayment struct {
-	PaymentID string
+	cqrs.AggregateID
 }
 
 type RevertPayment struct {
-	PaymentID string
+	cqrs.AggregateID
 }

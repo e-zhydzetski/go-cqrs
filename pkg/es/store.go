@@ -35,6 +35,7 @@ const (
 	StorePosEnd                 = ^uint64(0) // max uint64
 )
 
+// TODO add limit
 type EventFilter struct {
 	Stream string
 	Types  []string

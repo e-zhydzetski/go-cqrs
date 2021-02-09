@@ -23,11 +23,10 @@ type AggregateEvent struct {
 }
 
 type TestCase struct {
-	store             es.EventStore
-	app               TestableApp
-	givenEvents       []AggregateEvent
-	targetAggregateID string
-	whenCommand       cqrs.Command
+	store       es.EventStore
+	app         TestableApp
+	givenEvents []AggregateEvent
+	whenCommand cqrs.Command
 }
 
 func New(app TestableApp) *TestCase {
@@ -42,8 +41,7 @@ func (c *TestCase) Given(events ...AggregateEvent) *TestCase {
 	return c
 }
 
-func (c *TestCase) When(targetAggregateID string, command cqrs.Command) *TestCase {
-	c.targetAggregateID = targetAggregateID
+func (c *TestCase) When(command cqrs.Command) *TestCase {
 	c.whenCommand = command
 	return c
 }
@@ -77,7 +75,7 @@ func (c *TestCase) Then(expectedEvents ...cqrs.Event) func(*testing.T) {
 		}
 
 		// TODO get events from store by filter/subscription to test not only single aggregate handler results !!!
-		events, err := c.app.Command(c.targetAggregateID, c.whenCommand)
+		events, err := c.app.Command(c.whenCommand)
 		if err != nil {
 			t.Fatalf("command handler error: %v", err)
 		}
