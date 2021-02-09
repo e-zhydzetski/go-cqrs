@@ -11,11 +11,11 @@ func (p PlaceOrder) AggregateID() string {
 }
 
 type CancelOrder struct {
-	cqrs.AggregateID
+	cqrs.AggrID
 	Reason string
 }
 
 type CompleteOrder struct {
-	cqrs.AggregateID
+	cqrs.AggrID
 	Feedback string
 }

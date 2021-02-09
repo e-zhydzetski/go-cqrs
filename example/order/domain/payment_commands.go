@@ -12,13 +12,13 @@ func (p PreparePayment) AggregateID() string {
 }
 
 type ConfirmPayment struct {
-	cqrs.AggregateID
+	cqrs.AggrID
 }
 
 type CancelPayment struct {
-	cqrs.AggregateID
+	cqrs.AggrID
 }
 
 type RevertPayment struct {
-	cqrs.AggregateID
+	cqrs.AggrID
 }

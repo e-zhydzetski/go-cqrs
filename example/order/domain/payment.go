@@ -25,7 +25,7 @@ func (p *Payment) Apply(event cqrs.Event) {
 }
 
 func (p *Payment) CommandTypes() []cqrs.Command {
-	panic("implement me")
+	return []cqrs.Command{}
 }
 
 func (p *Payment) Handle(command cqrs.Command, actions cqrs.AggregateActions) error {
