@@ -18,6 +18,18 @@ func TestLoad(t *testing.T) {
 
 	store := New()
 
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() {
+			counter := 0
+			_ = store.SubscribeOnEvents(ctx, es.FilterDefault().WithTypes("test_event"), func(event *es.EventRecord) bool {
+				counter++
+				return counter < 2000
+			})
+			wg.Done()
+		}()
+	}
+
 	publishNewEvent := func(streamID int) {
 		retry := 0
 		for {

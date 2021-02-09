@@ -89,10 +89,10 @@ func (s *inMemoryEventStore) GetStreamEvents(ctx context.Context, stream string)
 	if !exists {
 		return events, nil
 	}
-	si.Iterate(func(data interface{}, head bool) bool {
+	si.Iterate(func(data interface{}) bool {
 		events = append(events, data.(*Node).Data.(*es.EventRecord))
 		return true
-	})
+	}, nil)
 	return events, nil
 }
 
@@ -141,7 +141,7 @@ func (s *inMemoryEventStore) SubscribeOnEvents(ctx context.Context, filter *es.E
 	// iterate by history events
 	var err error
 	var cont = true
-	s.events.Iterate(func(data interface{}, head bool) bool {
+	s.events.Iterate(func(data interface{}) bool {
 		err = ctx.Err()
 		if err != nil {
 			return false
@@ -154,13 +154,11 @@ func (s *inMemoryEventStore) SubscribeOnEvents(ctx context.Context, filter *es.E
 				return false
 			}
 		}
-		if head { // subscribe
-			s.subsMx.Lock()
-			s.subscriptions = append(s.subscriptions, safeCh)
-			s.subsMx.Unlock()
-			return false // go to subscription
-		}
 		return true
+	}, func() { // subscribe at the end of list
+		s.subsMx.Lock()
+		s.subscriptions = append(s.subscriptions, safeCh)
+		s.subsMx.Unlock()
 	})
 	if err != nil {
 		return err

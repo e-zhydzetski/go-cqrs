@@ -1,6 +1,8 @@
 package inmemes
 
-import "sync"
+import (
+	"sync"
+)
 
 type Node struct {
 	prev *Node
@@ -40,27 +42,38 @@ func (l *List) PushToHead(data interface{}) *Node {
 }
 
 // Forward iteration with additional synchronization on the head, as head may be changed during iteration
-func (l *List) Iterate(forEachFunc func(data interface{}, head bool) bool) {
+// If no elements lost - finalizer func invoked, push blocked during finalizer working
+func (l *List) Iterate(forEachFunc func(data interface{}) bool, finalizerFunc func()) {
 	cur := l.tail
-	for cur != nil {
-		next := cur.next
-		if next == nil {
-			// head
-			l.headMx.RLock() // maybe wait head change
-			next = cur.next
-			if next != nil { // become not a head
-				l.headMx.RUnlock() // unlock before callback as cur is not a head
+	for {
+		if cur != nil { // has element
+			if cont := forEachFunc(cur.Data); !cont {
+				return
 			}
 		}
-		cont := forEachFunc(cur.Data, next == nil)
-		if next == nil {
-			l.headMx.RUnlock() // unlock after callback as cur is a head
+		if cur == l.head && finalizerFunc != nil { // finalization on head if needed
+			cur = func() *Node {
+				l.headMx.RLock() // maybe wait head change
+				defer l.headMx.RUnlock()
+				if cur == l.head { // head not changed
+					finalizerFunc()
+					return nil // iteration should be terminated after finalization
+				}
+				// element added
+				if cur == nil { // head was nil, list was empty, so start from the beginning
+					return &Node{ // fake node before tail, to get tail on next step
+						next: l.tail,
+					}
+				}
+				return cur // head was not nil, so simple continue iteration
+			}()
 		}
-		if !cont {
-			return
+		if cur == nil {
+			break
 		}
-		cur = next
+		cur = cur.next
 	}
+
 }
 
 // Reverse is simple iteration, as no modification can be executed on process, as no push tail method exists
