@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/e-zhydzetski/go-cqrs/pkg/es"
 	"reflect"
+	"time"
 )
 
 type CommandResult struct {
@@ -15,7 +16,7 @@ type CommandResult struct {
 
 type App interface {
 	Command(command Command) (CommandResult, error)
-	Query(query Query) (QueryResult, error)
+	Query(ctx context.Context, query Query, minimalSeq es.StorePosition) (QueryResult, error)
 }
 
 type MainApp interface {
@@ -149,11 +150,19 @@ RETRY:
 	}, nil
 }
 
-func (s *SimpleApp) Query(query Query) (QueryResult, error) {
+func (s *SimpleApp) Query(ctx context.Context, query Query, minimalSeq es.StorePosition) (QueryResult, error) {
 	qt := reflect.TypeOf(query)
 	view, found := s.queryHandlers[qt]
 	if !found {
 		return nil, fmt.Errorf("no view found for query %T", query)
 	}
+
+	for view.GetLastAppliedSeq() < minimalSeq {
+		time.Sleep(100 * time.Millisecond)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+	}
+
 	return view.Query(query)
 }

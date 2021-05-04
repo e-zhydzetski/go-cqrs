@@ -7,7 +7,6 @@ import (
 	"github.com/e-zhydzetski/go-cqrs/pkg/cqrs"
 	"github.com/e-zhydzetski/go-cqrs/pkg/es/inmemes"
 	"log"
-	"time"
 )
 
 func main() {
@@ -29,22 +28,21 @@ func main() {
 	}
 	log.Println(orderPlaced)
 
-	time.Sleep(time.Millisecond * 10)
-
-	res, err := app.Query(&domain.GetCompletedOrdersQuery{})
+	res, err := app.Query(ctx, &domain.GetCompletedOrdersQuery{}, result.LastEventSequenceNumber)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Println(res)
 
-	_, _ = app.Command(&domain.CompleteOrder{
+	result, err = app.Command(&domain.CompleteOrder{
 		AggrID:   cqrs.AggrID(orderPlaced.ID),
 		Feedback: "All right!!!",
 	})
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	time.Sleep(time.Millisecond * 10)
-
-	res, err = app.Query(&domain.GetCompletedOrdersQuery{})
+	res, err = app.Query(ctx, &domain.GetCompletedOrdersQuery{}, result.LastEventSequenceNumber)
 	if err != nil {
 		log.Fatalln(err)
 	}

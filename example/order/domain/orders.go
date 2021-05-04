@@ -24,7 +24,7 @@ func (o *OrdersView) EventFilter() *es.EventFilter {
 }
 
 func (o *OrdersView) Apply(event cqrs.Event, globalSequence es.StorePosition) {
-	o.Seq = globalSequence
+	defer func() { o.Seq = globalSequence }() // update after the sequence event applied
 	switch e := event.(type) {
 	case *OrderPlaced:
 		o.TotalOrders++
@@ -32,6 +32,10 @@ func (o *OrdersView) Apply(event cqrs.Event, globalSequence es.StorePosition) {
 	case *OrderCompleted:
 		o.CompletedOrders[e.ID] = e.Feedback
 	}
+}
+
+func (o *OrdersView) GetLastAppliedSeq() es.StorePosition {
+	return o.Seq
 }
 
 func (o *OrdersView) QueryTypes() []cqrs.Query {
