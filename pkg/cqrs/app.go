@@ -7,8 +7,14 @@ import (
 	"reflect"
 )
 
+type CommandResult struct {
+	AggregateID             string
+	LastEventSequenceNumber es.StorePosition
+	Events                  SavedEvents
+}
+
 type App interface {
-	Command(command Command) (SavedEvents, error)
+	Command(command Command) (CommandResult, error)
 	Query(query Query) (QueryResult, error)
 }
 
@@ -76,12 +82,12 @@ func (a *aggregateActions) Emit(events ...Event) {
 	a.pendingEvents = append(a.pendingEvents, events...)
 }
 
-func (s *SimpleApp) Command(command Command) (SavedEvents, error) { // TODO maybe return full event with aggregate id
+func (s *SimpleApp) Command(command Command) (CommandResult, error) { // TODO maybe return full event with aggregate id
 	aggregateID := command.AggregateID()
 	commandType := reflect.TypeOf(command)
 	factory, found := s.aggregateFactories[commandType]
 	if !found {
-		return nil, fmt.Errorf("no aggregate found for command %T", command)
+		return CommandResult{}, fmt.Errorf("no aggregate found for command %T", command)
 	}
 
 RETRY:
@@ -91,7 +97,7 @@ RETRY:
 	if aggregateID != "" { // special case if aggregate not exists before command
 		aggregateEvents, err := s.eventStore.GetStreamEvents(s.ctx, AggregateToESStreamName(reflect.TypeOf(aggregate), aggregateID))
 		if err != nil {
-			return nil, err
+			return CommandResult{}, err
 		}
 		for _, event := range aggregateEvents {
 			aggregate.Apply(event.Data)
@@ -104,18 +110,18 @@ RETRY:
 	}
 	err := aggregate.Handle(command, actions)
 	if err != nil {
-		return nil, err
+		return CommandResult{}, err
 	}
 
 	if aggregateID != "" {
 		if aggregateID != aggregate.AggregateID() { // additional check that aggregate id not changed
-			return nil, fmt.Errorf("aggregate %T id was changed from %s to %s during command %T",
+			return CommandResult{}, fmt.Errorf("aggregate %T id was changed from %s to %s during command %T",
 				aggregate, aggregateID, aggregate.AggregateID(), command)
 		}
 	}
 
 	if aggregate.AggregateID() == "" {
-		return nil, fmt.Errorf("aggregate %T has no ID after command %T handling", aggregate, command)
+		return CommandResult{}, fmt.Errorf("aggregate %T has no ID after command %T handling", aggregate, command)
 	}
 
 	streamName := AggregateToESStreamName(reflect.TypeOf(aggregate), aggregate.AggregateID())
@@ -129,14 +135,18 @@ RETRY:
 			Data:     event,
 		}
 	}
-	err = s.eventStore.PublishEvents(s.ctx, eventRecords...)
+	lastPublishedEventPosition, err := s.eventStore.PublishEvents(s.ctx, eventRecords...)
 	if err != nil {
 		if err == es.ErrStreamConcurrentModification {
 			goto RETRY
 		}
-		return nil, err
+		return CommandResult{}, err
 	}
-	return actions.pendingEvents, nil
+	return CommandResult{
+		AggregateID:             aggregate.AggregateID(),
+		LastEventSequenceNumber: lastPublishedEventPosition,
+		Events:                  actions.pendingEvents,
+	}, nil
 }
 
 func (s *SimpleApp) Query(query Query) (QueryResult, error) {

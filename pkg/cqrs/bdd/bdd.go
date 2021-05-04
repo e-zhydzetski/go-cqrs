@@ -67,20 +67,20 @@ func (c *TestCase) Then(expectedEvents ...cqrs.Event) func(*testing.T) {
 				Type:     cqrs.EventToESEventType(event.Data),
 				Data:     event.Data,
 			}
-			if err := c.store.PublishEvents(ctx, eventRecord); err != nil {
+			if _, err := c.store.PublishEvents(ctx, eventRecord); err != nil {
 				t.Fatalf("unable to save given event: %v", err)
 			}
 		}
 
 		// TODO get events from store by filter/subscription to test not only single aggregate handler results !!!
-		events, err := c.app.Command(c.whenCommand)
+		result, err := c.app.Command(c.whenCommand)
 		if err != nil {
 			t.Fatalf("command handler error: %v", err)
 		}
 
 		for _, expectedEvent := range expectedEvents {
 			actualEvent := reflect.New(reflect.TypeOf(expectedEvent).Elem()).Interface() // TODO refactor magic
-			if !events.Get(actualEvent) {
+			if !result.Events.Get(actualEvent) {
 				t.Fatalf("not found expected event: %T", actualEvent)
 			}
 			assert.DeepEqual(t, expectedEvent, actualEvent)

@@ -24,21 +24,21 @@ type inMemoryEventStore struct {
 	subscriptions []*xchan.Safe
 }
 
-func (s *inMemoryEventStore) PublishEvents(ctx context.Context, events ...*es.EventRecord) error {
+func (s *inMemoryEventStore) PublishEvents(ctx context.Context, events ...*es.EventRecord) (es.StorePosition, error) {
 	if len(events) == 0 {
-		return nil // nothing to do
+		return 0, nil // nothing to do
 	}
 	var stream string // should be the same for all events, TODO maybe change API to pass stream once
 	for i, event := range events {
 		if event == nil {
-			return es.ErrInvalidEvent
+			return 0, es.ErrInvalidEvent
 		}
 		if i == 0 {
 			stream = event.Stream
 			continue
 		}
 		if event.Stream != stream {
-			return es.ErrInvalidEvent
+			return 0, es.ErrInvalidEvent
 		}
 	}
 
@@ -61,7 +61,7 @@ func (s *inMemoryEventStore) PublishEvents(ctx context.Context, events ...*es.Ev
 	// optimistic lock check
 	for _, event := range events {
 		if prevSeq+1 != event.Sequence {
-			return es.ErrStreamConcurrentModification
+			return 0, es.ErrStreamConcurrentModification
 		}
 		prevSeq = event.Sequence
 	}
@@ -78,7 +78,7 @@ func (s *inMemoryEventStore) PublishEvents(ctx context.Context, events ...*es.Ev
 
 	s.notifyAll(events)
 
-	return nil
+	return seq, nil
 }
 
 func (s *inMemoryEventStore) GetStreamEvents(ctx context.Context, stream string) ([]*es.EventRecord, error) {

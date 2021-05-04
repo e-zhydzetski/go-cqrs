@@ -19,12 +19,12 @@ func main() {
 	app.RegisterView(domain.NewOrdersView())
 
 	log.Println("Ready...")
-	events, err := app.Command(&domain.PlaceOrder{Amount: 100})
+	result, err := app.Command(&domain.PlaceOrder{Amount: 100})
 	if err != nil {
 		log.Fatalln(err)
 	}
 	orderPlaced := domain.OrderPlaced{}
-	if !events.Get(&orderPlaced) {
+	if !result.Events.Get(&orderPlaced) {
 		log.Fatalln("order not placed")
 	}
 	log.Println(orderPlaced)

@@ -11,7 +11,7 @@ var ErrInvalidEvent = errors.New("invalid event")
 
 type EventStore interface {
 	// First event version should be the latest already published inside the stream event version+1
-	PublishEvents(ctx context.Context, events ...*EventRecord) error
+	PublishEvents(ctx context.Context, events ...*EventRecord) (StorePosition, error)
 	GetStreamEvents(ctx context.Context, stream string) ([]*EventRecord, error)
 	SubscribeOnEvents(ctx context.Context, filter *EventFilter, callbackFunc func(event *EventRecord) bool) error
 }

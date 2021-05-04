@@ -22,7 +22,7 @@ func TestLoad(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			counter := 0
-			_ = store.SubscribeOnEvents(ctx, es.FilterDefault().WithTypes("test_event"), func(event *es.EventRecord) bool {
+			_ = store.SubscribeOnEvents(ctx, es.FilterDefault(), func(event *es.EventRecord) bool {
 				counter++
 				return counter < 2000
 			})
@@ -38,7 +38,7 @@ func TestLoad(t *testing.T) {
 			if l := len(events); l > 0 {
 				streamSeq = events[l-1].Sequence
 			}
-			err := store.PublishEvents(ctx, &es.EventRecord{
+			_, err := store.PublishEvents(ctx, &es.EventRecord{
 				Stream:   "test_stream_" + strconv.Itoa(streamID),
 				Sequence: streamSeq + 1,
 				Type:     "test_event",
@@ -65,7 +65,7 @@ func TestLoad(t *testing.T) {
 		go func() {
 			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 			counter := 0
-			_ = store.SubscribeOnEvents(ctx, es.FilterDefault().WithTypes("test_event"), func(event *es.EventRecord) bool {
+			_ = store.SubscribeOnEvents(ctx, es.FilterDefault(), func(event *es.EventRecord) bool {
 				counter++
 				return counter < 2000
 			})
