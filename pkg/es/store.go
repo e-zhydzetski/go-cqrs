@@ -8,6 +8,7 @@ import (
 
 var ErrStreamConcurrentModification = errors.New("stream concurrent modification")
 var ErrInvalidEvent = errors.New("invalid event")
+var ErrNoEvents = errors.New("no events")
 
 type EventStore interface {
 	// First event version should be the latest already published inside the stream event version+1
@@ -39,14 +40,14 @@ const (
 type EventFilter struct {
 	Stream string
 	Pos    StorePosition
-	//Back   bool
+	// Back   bool
 }
 
 func FilterDefault() *EventFilter {
 	return &EventFilter{
 		Stream: "",            // default all streams
 		Pos:    StorePosBegin, // default from the beginning
-		//Back:   false,         // default forward
+		// Back:   false,         // default forward
 	}
 }
 
@@ -60,7 +61,7 @@ func (ef *EventFilter) FromThePosition(pos StorePosition) *EventFilter {
 	return ef
 }
 
-//func (ef *EventFilter) Backward() *EventFilter {
+// func (ef *EventFilter) Backward() *EventFilter {
 //	ef.Back = true
 //	return ef
-//}
+// }

@@ -73,7 +73,7 @@ func (c *TestCase) Then(expectedEvents ...cqrs.Event) func(*testing.T) {
 		}
 
 		// TODO get events from store by filter/subscription to test not only single aggregate handler results !!!
-		result, err := c.app.Command(c.whenCommand)
+		result, err := c.app.Command(ctx, c.whenCommand)
 		if err != nil {
 			t.Fatalf("command handler error: %v", err)
 		}

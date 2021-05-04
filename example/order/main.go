@@ -18,7 +18,7 @@ func main() {
 	app.RegisterView(domain.NewOrdersView())
 
 	log.Println("Ready...")
-	result, err := app.Command(&domain.PlaceOrder{Amount: 100})
+	result, err := app.Command(ctx, &domain.PlaceOrder{Amount: 100})
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -34,7 +34,7 @@ func main() {
 	}
 	log.Println(res)
 
-	result, err = app.Command(&domain.CompleteOrder{
+	result, err = app.Command(ctx, &domain.CompleteOrder{
 		AggrID:   cqrs.AggrID(orderPlaced.ID),
 		Feedback: "All right!!!",
 	})

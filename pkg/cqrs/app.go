@@ -15,7 +15,7 @@ type CommandResult struct {
 }
 
 type App interface {
-	Command(command Command) (CommandResult, error)
+	Command(ctx context.Context, command Command) (CommandResult, error)
 	Query(ctx context.Context, query Query, minimalSeq es.StorePosition) (QueryResult, error)
 }
 
@@ -83,7 +83,7 @@ func (a *aggregateActions) Emit(events ...Event) {
 	a.pendingEvents = append(a.pendingEvents, events...)
 }
 
-func (s *SimpleApp) Command(command Command) (CommandResult, error) { // TODO maybe return full event with aggregate id
+func (s *SimpleApp) Command(ctx context.Context, command Command) (CommandResult, error) { // TODO maybe return full event with aggregate id
 	aggregateID := command.AggregateID()
 	commandType := reflect.TypeOf(command)
 	factory, found := s.aggregateFactories[commandType]
@@ -92,11 +92,15 @@ func (s *SimpleApp) Command(command Command) (CommandResult, error) { // TODO ma
 	}
 
 RETRY:
+	if err := ctx.Err(); err != nil {
+		return CommandResult{}, err
+	}
+
 	aggregate := factory(aggregateID)
 
 	var streamSeq uint32 = 0
 	if aggregateID != "" { // special case if aggregate not exists before command
-		aggregateEvents, err := s.eventStore.GetStreamEvents(s.ctx, AggregateToESStreamName(reflect.TypeOf(aggregate), aggregateID))
+		aggregateEvents, err := s.eventStore.GetStreamEvents(ctx, AggregateToESStreamName(reflect.TypeOf(aggregate), aggregateID))
 		if err != nil {
 			return CommandResult{}, err
 		}
@@ -136,7 +140,7 @@ RETRY:
 			Data:     event,
 		}
 	}
-	lastPublishedEventPosition, err := s.eventStore.PublishEvents(s.ctx, eventRecords...)
+	lastPublishedEventPosition, err := s.eventStore.PublishEvents(ctx, eventRecords...)
 	if err != nil {
 		if err == es.ErrStreamConcurrentModification {
 			goto RETRY

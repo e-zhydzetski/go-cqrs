@@ -26,7 +26,7 @@ type inMemoryEventStore struct {
 
 func (s *inMemoryEventStore) PublishEvents(ctx context.Context, events ...*es.EventRecord) (es.StorePosition, error) {
 	if len(events) == 0 {
-		return 0, nil // nothing to do
+		return 0, es.ErrNoEvents // nothing to do
 	}
 	var stream string // should be the same for all events, TODO maybe change API to pass stream once
 	for i, event := range events {
@@ -114,11 +114,11 @@ func checkFilter(filter *es.EventFilter, event *es.EventRecord) bool {
 	if filter.Stream != "" && filter.Stream != event.Stream {
 		return false
 	}
-	//if filter.Back {
+	// if filter.Back {
 	//	return event.GlobalSequence <= filter.Pos
-	//} else {
+	// } else {
 	return event.GlobalSequence >= filter.Pos
-	//}
+	// }
 }
 
 func (s *inMemoryEventStore) SubscribeOnEvents(ctx context.Context, filter *es.EventFilter, callbackFunc func(event *es.EventRecord) bool) error {
@@ -136,7 +136,7 @@ func (s *inMemoryEventStore) SubscribeOnEvents(ctx context.Context, filter *es.E
 		}
 		e := data.(*es.EventRecord)
 		if checkFilter(filter, e) {
-			//fmt.Println("History:", e.GlobalSequence)
+			// fmt.Println("History:", e.GlobalSequence)
 			cont = callbackFunc(e)
 			if !cont {
 				return false
@@ -166,7 +166,7 @@ func (s *inMemoryEventStore) SubscribeOnEvents(ctx context.Context, filter *es.E
 			}
 			e := raw.(*es.EventRecord)
 			if checkFilter(filter, e) {
-				//fmt.Println("Subscription:", e.GlobalSequence)
+				// fmt.Println("Subscription:", e.GlobalSequence)
 				if !callbackFunc(e) {
 					return nil
 				}
