@@ -20,11 +20,7 @@ type OrdersView struct {
 }
 
 func (o *OrdersView) EventFilter() *es.EventFilter {
-	return es.FilterDefault().WithTypes(
-		cqrs.EventToESEventType(&OrderPlaced{}),
-		cqrs.EventToESEventType(&OrderCancelled{}),
-		cqrs.EventToESEventType(&OrderCompleted{}),
-	)
+	return es.FilterDefault()
 }
 
 func (o *OrdersView) Apply(event cqrs.Event, globalSequence es.StorePosition) {

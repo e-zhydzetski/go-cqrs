@@ -114,18 +114,6 @@ func checkFilter(filter *es.EventFilter, event *es.EventRecord) bool {
 	if filter.Stream != "" && filter.Stream != event.Stream {
 		return false
 	}
-	if len(filter.Types) != 0 {
-		contains := false
-		for _, t := range filter.Types {
-			if t == event.Type {
-				contains = true
-				break
-			}
-		}
-		if !contains {
-			return false
-		}
-	}
 	//if filter.Back {
 	//	return event.GlobalSequence <= filter.Pos
 	//} else {

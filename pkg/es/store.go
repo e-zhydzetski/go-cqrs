@@ -38,7 +38,6 @@ const (
 // TODO add limit
 type EventFilter struct {
 	Stream string
-	Types  []string
 	Pos    StorePosition
 	//Back   bool
 }
@@ -46,7 +45,6 @@ type EventFilter struct {
 func FilterDefault() *EventFilter {
 	return &EventFilter{
 		Stream: "",            // default all streams
-		Types:  nil,           // default all types
 		Pos:    StorePosBegin, // default from the beginning
 		//Back:   false,         // default forward
 	}
@@ -54,11 +52,6 @@ func FilterDefault() *EventFilter {
 
 func (ef *EventFilter) WithTheStream(stream string) *EventFilter {
 	ef.Stream = stream
-	return ef
-}
-
-func (ef *EventFilter) WithTypes(types ...string) *EventFilter {
-	ef.Types = types
 	return ef
 }
 
