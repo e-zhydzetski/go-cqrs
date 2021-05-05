@@ -158,15 +158,24 @@ func (s *SimpleApp) Query(ctx context.Context, query Query, minimalSeq es.StoreP
 	qt := reflect.TypeOf(query)
 	view, found := s.queryHandlers[qt]
 	if !found {
-		return nil, fmt.Errorf("no view found for query %T", query)
+		return QueryResult{}, fmt.Errorf("no view found for query %T", query)
 	}
 
-	for view.GetLastAppliedSeq() < minimalSeq {
+	lastAppliedSeq := view.GetLastAppliedSeq()
+	for lastAppliedSeq < minimalSeq {
 		time.Sleep(100 * time.Millisecond)
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return QueryResult{}, err
 		}
+		lastAppliedSeq = view.GetLastAppliedSeq()
 	}
 
-	return view.Query(query)
+	res, err := view.Query(query)
+	if err != nil {
+		return QueryResult{}, err
+	}
+	return QueryResult{
+		Result: res,
+		Seq:    lastAppliedSeq,
+	}, nil
 }

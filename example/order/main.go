@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(res)
+	log.Println(res.Seq, res.Result)
 
 	result, err = app.Command(ctx, &domain.CompleteOrder{
 		AggrID:   cqrs.AggrID(orderPlaced.ID),
@@ -46,5 +46,5 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(res)
+	log.Println(res.Seq, res.Result)
 }

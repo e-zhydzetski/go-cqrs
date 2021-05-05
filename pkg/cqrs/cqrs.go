@@ -16,7 +16,10 @@ func (a AggrID) AggregateID() string {
 }
 
 type Query interface{}
-type QueryResult interface{}
+type QueryResult struct {
+	Result interface{}
+	Seq    es.StorePosition
+}
 
 type AggregateType reflect.Type
 
@@ -43,5 +46,5 @@ type View interface {
 	Apply(event Event, globalSequence es.StorePosition)
 	GetLastAppliedSeq() es.StorePosition
 	QueryTypes() []Query
-	Query(query Query) (QueryResult, error)
+	Query(query Query) (interface{}, error)
 }

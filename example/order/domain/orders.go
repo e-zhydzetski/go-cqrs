@@ -42,7 +42,7 @@ func (o *OrdersView) QueryTypes() []cqrs.Query {
 	return []cqrs.Query{&GetCompletedOrdersQuery{}}
 }
 
-func (o *OrdersView) Query(query cqrs.Query) (cqrs.QueryResult, error) {
+func (o *OrdersView) Query(query cqrs.Query) (interface{}, error) {
 	switch q := query.(type) {
 	case *GetCompletedOrdersQuery:
 		_ = q
