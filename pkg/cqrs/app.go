@@ -60,10 +60,13 @@ func (s *SimpleApp) RegisterAggregate(aggregateFactory AggregateFactory) {
 
 func (s *SimpleApp) RegisterView(view View) {
 	go func() {
-		_ = s.eventStore.SubscribeOnEvents(s.ctx, view.EventFilter(), func(event *es.EventRecord) bool {
-			view.Apply(event.Data, event.GlobalSequence)
-			return true
-		})
+		// TODO view should be persistent, read from last seq + 1 will lost very first event if it has seq = 0
+		_ = s.eventStore.SubscribeOnEvents(s.ctx,
+			es.FilterDefault().FromThePosition(view.GetLastAppliedSeq()+1),
+			func(event *es.EventRecord) bool {
+				view.Apply(event.Data, event.GlobalSequence)
+				return true
+			})
 	}()
 
 	for _, query := range view.QueryTypes() {

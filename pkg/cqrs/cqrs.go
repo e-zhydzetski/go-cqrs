@@ -42,7 +42,6 @@ type AggregateActions interface {
 type AggregateFactory func(id string) Aggregate
 
 type View interface {
-	EventFilter() *es.EventFilter
 	Apply(event Event, globalSequence es.StorePosition)
 	GetLastAppliedSeq() es.StorePosition
 	QueryTypes() []Query

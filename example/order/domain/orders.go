@@ -19,10 +19,6 @@ type OrdersView struct {
 	CompletedOrders map[string]string
 }
 
-func (o *OrdersView) EventFilter() *es.EventFilter {
-	return es.FilterDefault()
-}
-
 func (o *OrdersView) Apply(event cqrs.Event, globalSequence es.StorePosition) {
 	defer func() { o.Seq = globalSequence }() // update after the sequence event applied
 	switch e := event.(type) {
