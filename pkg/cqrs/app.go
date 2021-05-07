@@ -101,7 +101,9 @@ RETRY:
 
 	aggregate := factory(aggregateID)
 
+	var lastPublishedEventPosition = es.StorePosBegin
 	var streamSeq uint32 = 0
+
 	if aggregateID != "" { // special case if aggregate not exists before command
 		aggregateEvents, err := s.eventStore.GetStreamEvents(ctx, AggregateToESStreamName(reflect.TypeOf(aggregate), aggregateID))
 		if err != nil {
@@ -110,6 +112,7 @@ RETRY:
 		for _, event := range aggregateEvents {
 			aggregate.Apply(event.Data)
 			streamSeq = event.Sequence
+			lastPublishedEventPosition = event.GlobalSequence
 		}
 	}
 
@@ -143,12 +146,15 @@ RETRY:
 			Data:     event,
 		}
 	}
-	lastPublishedEventPosition, err := s.eventStore.PublishEvents(ctx, eventRecords...)
-	if err != nil {
-		if err == es.ErrStreamConcurrentModification {
-			goto RETRY
+
+	if len(actions.pendingEvents) != 0 {
+		lastPublishedEventPosition, err = s.eventStore.PublishEvents(ctx, eventRecords...)
+		if err != nil {
+			if err == es.ErrStreamConcurrentModification {
+				goto RETRY
+			}
+			return CommandResult{}, err
 		}
-		return CommandResult{}, err
 	}
 	return CommandResult{
 		AggregateID:             aggregate.AggregateID(),

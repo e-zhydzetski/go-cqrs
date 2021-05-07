@@ -47,4 +47,12 @@ func main() {
 		log.Fatalln(err)
 	}
 	log.Println(res.Seq, res.Result)
+
+	result, err = app.Command(ctx, &domain.DoNothing{
+		AggrID: cqrs.AggrID(orderPlaced.ID),
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(result)
 }

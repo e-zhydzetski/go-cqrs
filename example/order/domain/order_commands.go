@@ -19,3 +19,7 @@ type CompleteOrder struct {
 	cqrs.AggrID
 	Feedback string
 }
+
+type DoNothing struct {
+	cqrs.AggrID
+}

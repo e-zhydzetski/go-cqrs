@@ -52,6 +52,7 @@ func (o *Order) CommandTypes() []cqrs.Command {
 		&PlaceOrder{},
 		&CancelOrder{},
 		&CompleteOrder{},
+		&DoNothing{},
 	}
 }
 
@@ -63,6 +64,8 @@ func (o *Order) Handle(cmd cqrs.Command, actions cqrs.AggregateActions) error {
 		return o.cancel(actions, c)
 	case *CompleteOrder:
 		return o.complete(actions, c)
+	case *DoNothing:
+		return nil
 	}
 	return errors.New("unexpected command")
 }
