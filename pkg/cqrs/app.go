@@ -17,6 +17,7 @@ type CommandResult struct {
 type App interface {
 	Command(ctx context.Context, command Command) (CommandResult, error)
 	Query(ctx context.Context, query Query, minimalSeq es.StorePosition) (QueryResult, error)
+	EventStore() es.EventStore // TODO maybe remove in future
 }
 
 type MainApp interface {

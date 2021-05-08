@@ -9,11 +9,6 @@ import (
 	"testing"
 )
 
-type TestableApp interface {
-	cqrs.App
-	EventStore() es.EventStore
-}
-
 type AggregateEvent struct {
 	AggregateType cqrs.AggregateType
 	AggregateID   string
@@ -22,12 +17,12 @@ type AggregateEvent struct {
 
 type TestCase struct {
 	store       es.EventStore
-	app         TestableApp
+	app         cqrs.App
 	givenEvents []AggregateEvent
 	whenCommand cqrs.Command
 }
 
-func New(app TestableApp) *TestCase {
+func New(app cqrs.App) *TestCase {
 	return &TestCase{
 		store: app.EventStore(),
 		app:   app,
